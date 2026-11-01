@@ -8,4 +8,10 @@
 
 此次源码导入保留根隐私页面原字节，不修改 GitHub Pages 配置。源码提交不代表 App 网站、后端或语音服务已经部署，也不代表 Android 真机声音问题已经验证通过。
 
-导入仅包含当前源码快照，不包含原 App Git 历史、发布签名材料、实际环境配置、数据库、依赖缓存或 APK。项目整体没有在本次导入中新增开源许可证；第三方词库的许可和来源说明见 [`nihongomate/public/licenses/`](nihongomate/public/licenses/)。
+导入仅包含当前源码快照，不包含原 App Git 历史、发布签名材料、实际环境配置、数据库、依赖缓存或 APK。
+
+## 开源许可
+
+本项目自有源码及文档采用 [MIT License](LICENSE)，允许商用、修改及再分发，使用时需保留版权与许可声明。
+
+第三方数据、依赖、Gradle wrapper 及素材继续遵守各自的许可证，不因本项目采用 MIT 而变更授权。派生词库 [`src/data/importedVocabulary.json`](nihongomate/src/data/importedVocabulary.json) 与 [`public/data/vocabulary-source.json`](nihongomate/public/data/vocabulary-source.json) 继续按 **CC BY-SA 4.0** 分发；来源、修改记录及上游许可声明见 [`nihongomate/public/licenses/`](nihongomate/public/licenses/)。

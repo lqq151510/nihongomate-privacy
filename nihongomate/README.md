@@ -61,4 +61,6 @@ cd android
 
 `docs/` 中的验收记录属于各日期、各阶段的历史证据。源码快照、自动化测试或构建成功不代表当前 vivo 真机的外放、重复播放、后台恢复和联网服务已经验收通过；设备声音问题须按实际安装包及用户听感单独验证。本次源码导入没有执行设备安装或远端服务部署。
 
-第三方词库的来源及许可保留在 [public/licenses/](public/licenses/)，并有对应来源文档。本次没有为整个项目新增开源许可证；使用或再分发时应分别核对项目授权与第三方条款。
+本项目自有源码及文档采用 [MIT License](../LICENSE)，允许商用、修改及再分发，使用时需保留版权与许可声明。
+
+第三方数据、依赖、Gradle wrapper 及素材继续遵守各自的许可证。派生词库 [src/data/importedVocabulary.json](src/data/importedVocabulary.json) 与 [public/data/vocabulary-source.json](public/data/vocabulary-source.json) 继续按 **CC BY-SA 4.0** 分发，不包含在本项目自有代码的 MIT 授权范围内。来源、修改记录及上游许可声明保留在 [public/licenses/](public/licenses/)，详见 [词库来源记录](docs/VOCAB_SOURCE_2026-11-01.md)。
