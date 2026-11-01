@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+android/app/build/
+android/.gradle/
+android/build/
+*.tsbuildinfo
+src/**/*.js
+src/**/*.vue.js
+*.jks
+*.keystore
+**/keystore.properties
+.env
+.env.*
+!.env.example
+.playwright-mcp/
