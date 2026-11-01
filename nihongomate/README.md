@@ -30,6 +30,16 @@ bun run preview --host 127.0.0.1 --port 4174 --strictPort
 
 `build` 同时执行 Vue / TypeScript 类型检查和 Vite 打包，输出到 `dist/`。本仓库不提交依赖目录、构建产物或实际 `.env` 文件；如需设置社交服务默认地址，可在本机环境中配置 `VITE_SOCIAL_API_URL`。浏览器开发与 Android 手机访问服务的地址不同，请参阅 [本地构建与联调说明](docs/LOCAL_RELEASE.md)。
 
+## 手机构建的公开服务地址
+
+仓库提供不含密钥的 `.env.example`。需要构建手机端默认社交地址时，先在本目录执行：
+
+```sh
+cp .env.example .env.production
+```
+
+示例默认连接 `https://api.quanquan.cloud`；自行部署时可改成自己的 HTTPS 地址。这个构建默认值不代表用户已经同意联网，仍需在应用内主动开启可选社交功能。真实 `.env.production` 不提交。
+
 ## 可选 Python 服务
 
 社交后端需要 Python 3.12–3.14 和 uv。在 `backend/` 执行：

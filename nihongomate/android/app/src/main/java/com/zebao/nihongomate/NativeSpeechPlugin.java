@@ -1,6 +1,7 @@
 package com.zebao.nihongomate;
 
 import android.content.Intent;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,15 +17,18 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/** Device speech only: no engine installation, engine switch, or network fallback. */
+/** Device speech only; never changes system engine settings or installs voice data. */
 @CapacitorPlugin(name = "NativeSpeech")
 public class NativeSpeechPlugin extends Plugin {
+    private static final String GOOGLE_ENGINE = "com.google.android.tts";
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<InitWaiter> initWaiters = new ArrayList<>();
     private TextToSpeech tts;
+    private boolean googleEngineRequested;
     private boolean initialized;
     private boolean initializing;
     private boolean destroyed;
@@ -69,13 +73,25 @@ public class NativeSpeechPlugin extends Plugin {
         main.postDelayed(initTimeout, 8000);
         try {
             Intent service = new Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE);
-            if (getContext().getPackageManager().queryIntentServices(service, 0).isEmpty()) {
+            List<ResolveInfo> services = getContext().getPackageManager().queryIntentServices(service, 0);
+            boolean available = false;
+            googleEngineRequested = false;
+            for (ResolveInfo candidate : services) {
+                if (candidate.serviceInfo == null || !candidate.serviceInfo.enabled
+                    || candidate.serviceInfo.applicationInfo == null || !candidate.serviceInfo.applicationInfo.enabled) continue;
+                available = true;
+                if (GOOGLE_ENGINE.equals(candidate.serviceInfo.packageName)) googleEngineRequested = true;
+            }
+            if (!available) {
                 failInitialization(generation, "NO_ENGINE");
                 return waiter;
             }
             // Always enqueue OnInit: some engines fail synchronously before this constructor returns.
-            tts = new TextToSpeech(getContext().getApplicationContext(), status ->
-                main.post(() -> finishInitialization(generation, status)));
+            TextToSpeech.OnInitListener onInit = status -> main.post(() -> finishInitialization(generation, status));
+            // A Google initialization failure settles normally; do not rebuild with a default engine.
+            tts = googleEngineRequested
+                ? new TextToSpeech(getContext().getApplicationContext(), onInit, GOOGLE_ENGINE)
+                : new TextToSpeech(getContext().getApplicationContext(), onInit);
         } catch (RuntimeException error) {
             failInitialization(generation, "INIT_FAILED");
         }
@@ -139,6 +155,7 @@ public class NativeSpeechPlugin extends Plugin {
         if (provided == null) return voices;
         for (Voice voice : provided) {
             if (voice == null || voice.getLocale() == null || !"ja".equals(voice.getLocale().getLanguage())) continue;
+            if (googleEngineRequested && !compatibleGoogleVoice(voice)) continue;
             Set<String> features = voice.getFeatures();
             if (features != null && features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
             if (localOnly && !isLocal(voice)) continue;
@@ -153,7 +170,14 @@ public class NativeSpeechPlugin extends Plugin {
         return voice.getFeatures() != null && !voice.isNetworkConnectionRequired();
     }
 
-    private String voiceId(Voice voice) { return "android:" + voice.getName(); }
+    private boolean compatibleGoogleVoice(Voice voice) {
+        return voice != null && voice.getName() != null
+            && voice.getName().toLowerCase(Locale.ROOT).startsWith("ja-jp-");
+    }
+
+    private String voiceId(Voice voice) {
+        return googleEngineRequested ? "android:" + GOOGLE_ENGINE + ":" + voice.getName() : "android:" + voice.getName();
+    }
 
     @PluginMethod
     public void getVoices(PluginCall call) {
@@ -164,7 +188,7 @@ public class NativeSpeechPlugin extends Plugin {
                 for (Voice voice : japaneseVoices(false)) {
                     JSObject item = new JSObject();
                     item.put("id", voiceId(voice));
-                    item.put("name", voice.getName());
+                    item.put("name", googleEngineRequested && compatibleGoogleVoice(voice) ? "Google · " + voice.getName() : voice.getName());
                     item.put("lang", voice.getLocale().toLanguageTag());
                     item.put("localService", isLocal(voice));
                     item.put("installed", true);
@@ -219,6 +243,7 @@ public class NativeSpeechPlugin extends Plugin {
                     }
                     Voice actual = tts.getVoice();
                     if (actual == null || actual.getLocale() == null || !"ja".equals(actual.getLocale().getLanguage())
+                        || (googleEngineRequested && !compatibleGoogleVoice(actual))
                         || (actual.getFeatures() != null && actual.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED))) {
                         settle(request, false, "NO_JAPANESE_VOICE");
                         return;

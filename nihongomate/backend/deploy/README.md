@@ -1,4 +1,6 @@
-# 腾讯云服务器部署准备（尚未连接或部署）
+# 腾讯云服务器部署与回退
+
+2026-11-01 已按用户授权完成实际部署：`https://api.quanquan.cloud`，独立 `nihongomate-social.service`，数据 `/var/lib/nihongomate-social/social.db`；证书自动续期演练、公网 TLS/CORS、服务重启持久化和 vivo 业务验证已通过。本轮旧 Java 服务已按另行授权停用并归档。实际执行及回退记录位于项目相邻的 `release-evidence/20261101-social-mobile-184438/server/`。以下文件仍是供后续环境复用的模板，具体证书、路径及原运行状态以对应部署记录为准。
 
 这些是本地模板。先只读确认服务器系统、SSH 登录方式、现有站点/端口、域名 DNS 和证书，
 再按实际环境调整。无需把密码、私钥或令牌发到聊天；使用用户已有的 SSH 配置或本机密钥。
@@ -28,7 +30,7 @@ uv sync --frozen --no-dev --python /usr/bin/python3.12
 `StateDirectory` 自动建立权限 0700 的持久目录；`UMask=0077` 保护数据库及 WAL/SHM。
 模板仅监听 `127.0.0.1:8001`、单 worker；无需向腾讯云安全组开放 8001。
 用目标服务器的 `systemd-analyze verify 模板路径` 验证兼容性后，
-再安装**新服务名**、`daemon-reload` 并启动；这些操作目前均未执行。
+再安装**新服务名**、`daemon-reload` 并启动；本轮实际执行结果已单独记录，后续环境仍需重新验证。
 
 ## HTTPS 与反向代理
 
@@ -91,8 +93,7 @@ sudo -u nihongomate-social /opt/nihongomate-social/current/backend/.venv/bin/pyt
 一起移动到新建的故障留存目录。再把已验证备份以权限 0600、服务账号所有权放回 `social.db`，
 不要让旧 WAL/SHM 与恢复库混用；选择匹配代码版本，启动并重复验收。故障留存和旧备份不删除。
 
-模板未在目标 Linux 上加载：systemd/Nginx 语法、服务用户、端口占用、证书续期、备份介质和
-真实手机网络都需服务器可访问后验证。账号找回/删除、审核举报等正式公开运营能力仍见上层 README 的限制。
+后续环境应重新验证 systemd/Nginx 语法、服务用户、端口占用、证书续期、备份介质和真实手机网络；本轮通过项及具体证据已在开头列明。账号找回/删除、审核举报等正式公开运营能力仍见上层 README 的限制。
 
 参考：[systemd 执行与 StateDirectory](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html)、
 [Nginx 反向代理](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)、
