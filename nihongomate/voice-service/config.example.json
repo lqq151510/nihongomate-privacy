@@ -1,0 +1,12 @@
+{
+  "azure_key": "",
+  "region": "",
+  "proxy_token": "",
+  "origins": [
+    "capacitor://localhost",
+    "https://localhost",
+    "http://localhost",
+    "http://127.0.0.1:4204"
+  ],
+  "daily_character_limit": 5000
+}

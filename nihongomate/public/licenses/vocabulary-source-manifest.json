@@ -1,0 +1,67 @@
+{
+  "name": "NihongoMate derived Japanese–Chinese learning vocabulary",
+  "source": "Tomoshi (Y1Z), with JMdict (EDRDG) and Jonathan Waller / yomitan-jlpt-vocab",
+  "repository": "https://github.com/tomoshi-app/tomoshi-dict-data",
+  "release": "v2026-10-13",
+  "sourceCommit": "4f1fec127ec6a50fa0892235942e1caa414a882b",
+  "archiveUrl": "https://github.com/tomoshi-app/tomoshi-dict-data/releases/download/v2026-10-13/tomoshi-dict-open.db.zst",
+  "archiveSha256": "51581856d3e563b32b05738efd67c38ed9946c013555fd3c0870e24d194c2048",
+  "databaseSha256": "aefd9f997386ba277bdb1a4b34fef9fbf1aabfcb8fa4399cb53b50020751f5d1",
+  "derivedSha256": "bfa295f8952d3a993517493da4784d3b5e32967d7fdad8d4e23af33779d585e6",
+  "license": "CC-BY-SA-4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "modifications": "Filtered to community JLPT-tagged entries with eligible Chinese senses, selected canonical spelling/reading, excluded dated/sensitive senses, limited to two senses, translated POS labels, deduplicated and converted to app JSON. Two sampled meanings were narrowed to their common teaching senses. Examples and audio were not imported.",
+  "meaningOverrides": {
+    "1158450": "维持；保持",
+    "1198500": "会见；会面；接见"
+  },
+  "accuracyNotice": "Chinese glosses in the upstream dataset were produced with LLM assistance and reviewed by a separate model. Structural checks and sampling do not constitute complete human teacher review.",
+  "levelNotice": "N1–N5 are community learning estimates, not official complete JLPT lists.",
+  "tableLicenses": [
+    {
+      "table": "entries",
+      "license": "CC-BY-SA-4.0",
+      "sourceDatabase": "dict.db",
+      "attribution": "JMdict, Electronic Dictionary Research and Development Group — https://www.edrdg.org/; examples stripped, see meta"
+    },
+    {
+      "table": "freq_rank",
+      "license": "CC-BY-SA-4.0",
+      "sourceDatabase": "dict.db",
+      "attribution": "Derived from JMdict priority markers, Electronic Dictionary Research and Development Group — https://www.edrdg.org/"
+    },
+    {
+      "table": "vocab_jlpt",
+      "license": "CC-BY-SA-4.0",
+      "sourceDatabase": "dict.db",
+      "attribution": "yomitan-jlpt-vocab (Jonathan Waller / tanos.co.uk lineage) — https://github.com/stephenmk/yomitan-jlpt-vocab"
+    },
+    {
+      "table": "zh_defs",
+      "license": "CC-BY-SA-4.0",
+      "sourceDatabase": "lang_zh-CN.db",
+      "attribution": "JMdict-derived Chinese gloss translations © Y1Z"
+    }
+  ],
+  "counts": {
+    "joinedEntries": 7777,
+    "importedEntries": 7736,
+    "byLevel": {
+      "N5": 690,
+      "N4": 646,
+      "N3": 1641,
+      "N2": 1732,
+      "N1": 3027
+    },
+    "excludedEntries": {
+      "duplicate_surface_and_reading": 22,
+      "no_eligible_chinese_sense": 19
+    },
+    "excludedSenses": {
+      "adult_gloss": 29,
+      "dated_rare_derogatory_or_sensitive_tag": 289,
+      "missing_chinese_gloss": 1
+    },
+    "sensePolicy": "One canonical spelling/reading per source entry; first two eligible Chinese senses; variants are not counted as extra vocabulary."
+  }
+}

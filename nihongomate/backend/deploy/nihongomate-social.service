@@ -1,0 +1,34 @@
+# Template only. Confirm paths, Linux user, Python and existing ports before installation.
+[Unit]
+Description=NihongoMate social API
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=nihongomate-social
+Group=nihongomate-social
+WorkingDirectory=/opt/nihongomate-social/current/backend
+Environment=NIHONGOMATE_DB_PATH=/var/lib/nihongomate-social/social.db
+Environment=NIHONGOMATE_CORS_ORIGINS=https://localhost
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/nihongomate-social/current/backend/.venv/bin/uvicorn app:create_app --factory --host 127.0.0.1 --port 8001 --workers 1 --proxy-headers --forwarded-allow-ips=127.0.0.1 --no-access-log
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+UMask=0077
+StateDirectory=nihongomate-social
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
+

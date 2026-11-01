@@ -1,0 +1,100 @@
+# 本地构建与签名
+
+## Android 手机交付与多人学习服务
+
+Android 安装包的多人学习服务默认地址为 `https://api.quanquan.cloud`，使用 HTTPS 连接好友、搭子发现和自习室讨论服务。
+生产构建默认值保存在项目根目录 `.env.production` 的 `VITE_SOCIAL_API_URL` 中；该值是公开服务地址，不是密钥。
+默认地址只提供连接目标，用户仍需查看隐私说明并单独开启联网，再注册或登录在线账号。
+
+手机端不使用 `127.0.0.1` 连接电脑。交付前应分别核对域名解析、有效 TLS 证书、后端健康检查、
+Android 来源 `https://localhost` 的 CORS 配置，以及手机上的注册、好友和自习室实际往返。
+安装包构建、服务器部署和手机联网验收应按各自证据报告，不能相互替代。
+
+### 电脑开发联调（可选）
+
+在项目根目录启动前端：
+
+```sh
+bun run dev --host 127.0.0.1 --port 4174 --strictPort
+```
+
+另开终端，在 `backend/` 启动多人服务：
+
+```sh
+uv sync --frozen
+uv run --frozen uvicorn app:create_app --factory --host 127.0.0.1 --port 8001
+```
+
+浏览器打开 `http://127.0.0.1:4174/`，进入“搭子”，查看隐私选择后单独勾选联网说明，
+服务地址填 `http://127.0.0.1:8001`，再注册在线账号。使用两个独立浏览器会话即可邀请好友共学。
+同一浏览器的普通标签页可能共享资料，请用无痕窗口验证第二个账号。
+搭子推荐默认关闭；知道完整用户名的已登录用户仍可精确搜索。
+好友通过申请并获同意后建立；创建自习室后分享邀请码，对方主动加入后才能讨论。
+
+学习进度与本地资料不会自动上传。在线身份独立，密码不保存到浏览器存储，令牌保存在会话存储。
+在线数据保存在所连接服务配置的 SQLite 数据库中；本机服务默认路径为 `backend/data/social.db`。测试使用临时数据库，不向业务库灌入示例用户。
+“仅使用本地功能”立即停止社交请求并清除本机在线会话，不删除服务器数据。
+域名、TLS、后端可达性和手机多人流程需在交付时按实际状态核验；构建通过不代表这些检查已通过。账号注销、密码找回及内容管理仍需后续完善。
+完整接口、权限和本地服务说明见 [backend/README.md](../backend/README.md)。
+
+回退此功能时，移除 `App.vue` 中的 `social` 导航/组件接入及新增社交模块即可恢复学习入口；
+不要用整个工作区重置来回退。已有学习数据与其他未提交修改应保留，后端数据库单独备份管理。
+
+## 前端与 Android 构建
+
+前端检查和生产构建：
+
+```sh
+bun test ./tests
+bun run build
+./node_modules/.bin/cap sync android
+```
+
+Android 首次构建在 `android` 目录执行 `./gradlew assembleRelease`，从官方仓库补齐依赖。
+后续可以使用 `--offline`；离线构建需要本机已经安装相应 JDK、Android SDK 并缓存完整 Gradle 依赖。
+本机现有 JDK 21 可用下面的单次命令指定，不需要修改全局 Java 配置：
+
+```sh
+JAVA_HOME='/Users/liuyongze/java/jdk-21.0.10.jdk/Contents/Home' ./gradlew assembleRelease --max-workers=2
+```
+
+没有签名配置时可开发和构建 debug；release 构建会明确报错，不会默默交付未签名包。
+
+`vue-tsc --noEmit` 只检查类型，JavaScript 统一由 Vite 打包到 `dist/`。
+不要在 `src/` 中保留同名编译生成的 `.js`，以免解析到过期副本。
+
+## 签名配置
+
+发布密钥和密码不应进入源码或日志。默认读取本机文件：
+
+`~/.local/share/nihongomate/signing/keystore.properties`
+
+也可以设置 `NIHONGOMATE_SIGNING_PROPERTIES` 为受保护配置文件的绝对路径。
+配置文件使用 Java Properties 格式，包含下面四个字段，值由密钥持有人在本机填写：
+
+```properties
+storeFile=/absolute/path/to/release.jks
+storePassword=YOUR_LOCAL_PASSWORD
+keyAlias=YOUR_KEY_ALIAS
+keyPassword=YOUR_LOCAL_KEY_PASSWORD
+```
+
+配置目录权限设为 `700`，配置文件及密钥文件权限设为 `600`。
+不要提交上述实际配置，不要在命令参数、截图、工单或构建日志中打印密码。
+在其他机器或 CI 上构建时，通过受控秘密存储提供配置及同一把发布密钥。
+
+2026-11-01 本地整理保留了原签名身份，两份原密钥移动到上述签名目录的
+`backups/20261101-quality-pass/` 下；主密钥与原文件已逐字节核对。
+应用包名、版本号及签名身份未因这次整理变更。
+
+此改动只移除当前工作树中的密钥和密码。旧 Git 提交仍可能包含原材料，尚未核查远端传播范围，
+也未重写历史或更换密钥。后续处理需兼顾既有安装包的升级签名连续性。
+
+## 发布前仍需验证
+
+- vivo 真机安装、日语语音引擎、无语音包提示、飞行模式、后台切换及学习记录持久化。
+- APK 中的网页资源与本次构建一致，APK 签名校验通过。
+- 申报截图、使用说明书、隐私政策托管页面和商店文案与当前实际版本一致。
+- 经营主体、APP 备案、内容授权及商店审核材料按最终运营模式核对。
+
+构建通过不代表已通过商店审核。本项目当前不含广告、付费会员或真实短信账号服务。
