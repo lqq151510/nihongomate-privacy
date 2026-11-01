@@ -60,12 +60,47 @@ function checkInStreak(dates: string[], now = new Date()): number {
   return streak
 }
 
+// 只在保存前严格检查：缺失表示首次使用，其余损坏内容不能当作空记录覆盖。
+function parseObjectForWrite(raw: string | null, label: string): Record<string, unknown> {
+  if (raw === null) return {}
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error(`${label}无法读取，已停止保存以保护原始数据。`)
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${label}格式异常，已停止保存以保护原始数据。`)
+  }
+  return parsed as Record<string, unknown>
+}
+
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isSafeWordRecord(value: unknown): boolean {
+  if (!isRecordObject(value)) return false
+  const stringFields = ['wordId', 'level', 'status']
+  const numberFields = ['reviewCount', 'lastReviewTime', 'nextReviewTime', 'easeFactor']
+  if (stringFields.some(key => key in value && typeof value[key] !== 'string') ||
+      numberFields.some(key => key in value && (typeof value[key] !== 'number' || !Number.isFinite(value[key])))) return false
+  if ('reviewCount' in value && (!Number.isInteger(value.reviewCount) || (value.reviewCount as number) < 0)) return false
+  if (['lastReviewTime', 'nextReviewTime'].some(key => key in value && (value[key] as number) < 0)) return false
+  if ('easeFactor' in value && (value.easeFactor as number) <= 0) return false
+  return !('status' in value) || ['mastered', 'vague', 'unfamiliar'].includes(value.status as string)
+}
+
 class StudyStorageEngine {
   // 获取所有单词的学习记录
   getAllRecords(): Record<string, WordStudyRecord> {
     try {
       const data = localStorage.getItem(STORAGE_KEY_RECORDS)
-      return data ? JSON.parse(data) : {}
+      if (data === null) return {}
+      const parsed: unknown = JSON.parse(data)
+      if (!isRecordObject(parsed)) return {}
+      // 只读视图跳过无效条目，避免因单条损坏造成页面崩溃；不会改写本地原始值。
+      return Object.fromEntries(Object.entries(parsed).filter(([, value]) => isRecordObject(value))) as Record<string, WordStudyRecord>
     } catch {
       return {}
     }
@@ -73,19 +108,44 @@ class StudyStorageEngine {
 
   // 记录自评掌握情况，并用简易间隔规则安排下次复习。
   recordWordState(wordId: string, level: string, status: 'mastered' | 'vague' | 'unfamiliar'): WordStudyRecord {
-    const all = this.getAllRecords()
+    // 先读取并校验两个键，任何异常都在写入前终止，保留可供恢复的原始内容。
+    const previousRecords = localStorage.getItem(STORAGE_KEY_RECORDS)
+    const parsedRecords = parseObjectForWrite(previousRecords, '词汇记录')
+    if (Object.values(parsedRecords).some(value => !isSafeWordRecord(value))) {
+      throw new Error('词汇记录包含异常条目，已停止保存以保护原始数据。')
+    }
+    const all = parsedRecords as unknown as Record<string, WordStudyRecord>
+    const previousStats = localStorage.getItem(STORAGE_KEY_STATS)
+    const parsedStats = parseObjectForWrite(previousStats, '学习统计')
+    const arrayFields = ['checkInDates', 'todayNewWordIds']
+    const numberFields = ['totalLearnedWords', 'todayReviewCount', 'studyStreakDays', 'todayExamQuestionsCount']
+    if (arrayFields.some(key => key in parsedStats && (!Array.isArray(parsedStats[key]) || !(parsedStats[key] as unknown[]).every(value => typeof value === 'string'))) ||
+        numberFields.some(key => key in parsedStats && (typeof parsedStats[key] !== 'number' || !Number.isInteger(parsedStats[key]) || (parsedStats[key] as number) < 0)) ||
+        ['lastStudyDate', 'targetLevel'].some(key => key in parsedStats && typeof parsedStats[key] !== 'string') ||
+        ('lastStudyDate' in parsedStats && (typeof parsedStats.lastStudyDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(parsedStats.lastStudyDate)))) {
+      throw new Error('学习统计包含异常字段，已停止保存以保护原始数据。')
+    }
+    const stats = this.getStats(previousStats)
     const now = Date.now()
-    const isNewWord = !all[wordId]
-    const existing = all[wordId] || {
+    const isNewWord = !Object.hasOwn(all, wordId)
+    const existing = isNewWord ? {
       wordId,
       level,
-      status: 'unfamiliar',
+      status: 'unfamiliar' as const,
       reviewCount: 0,
       lastReviewTime: now,
       nextReviewTime: now,
       easeFactor: 2.5
+    } : { ...all[wordId]! }
+    // 允许旧记录缺少字段，但不把显式损坏的数值悄悄覆盖。
+    if ((existing.reviewCount !== undefined && (typeof existing.reviewCount !== 'number' || !Number.isFinite(existing.reviewCount))) ||
+        (existing.easeFactor !== undefined && (typeof existing.easeFactor !== 'number' || !Number.isFinite(existing.easeFactor)))) {
+      throw new Error('词汇记录包含异常字段，已停止保存以保护原始数据。')
     }
-
+    existing.reviewCount = existing.reviewCount ?? 0
+    existing.easeFactor = existing.easeFactor ?? 2.5
+    existing.wordId = existing.wordId ?? wordId
+    existing.level = existing.level ?? level
     existing.status = status
     existing.reviewCount += 1
     existing.lastReviewTime = now
@@ -103,12 +163,11 @@ class StudyStorageEngine {
     }
 
     existing.nextReviewTime = now + intervalDays * 24 * 60 * 60 * 1000
-    all[wordId] = existing
+    Object.defineProperty(all, wordId, { value: existing, enumerable: true, configurable: true, writable: true })
 
-    const previousRecords = localStorage.getItem(STORAGE_KEY_RECORDS)
     try {
       localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(all))
-      this.updateDailyStats(isNewWord ? wordId : undefined)
+      this.updateDailyStats(isNewWord ? wordId : undefined, { stats, records: all })
     } catch (e) {
       // 两个本地键不是数据库事务；统计失败时尽力恢复词汇记录，避免错误占用新词额度。
       try {
@@ -141,7 +200,7 @@ class StudyStorageEngine {
   }
 
   // 获取全局学习统计
-  getStats(): UserStudyStats {
+  getStats(snapshot?: string | null): UserStudyStats {
     const todayStr = localDateKey()
     const defaults: UserStudyStats = {
       totalLearnedWords: 0,
@@ -155,7 +214,7 @@ class StudyStorageEngine {
     }
     let stats = defaults
     try {
-      const data = localStorage.getItem(STORAGE_KEY_STATS)
+      const data = snapshot === undefined ? localStorage.getItem(STORAGE_KEY_STATS) : snapshot
       if (data) {
         const parsed = JSON.parse(data)
         stats = { ...defaults, ...parsed }
@@ -281,11 +340,11 @@ class StudyStorageEngine {
   }
 
   // 更新学习次数，不把学习操作当成主动打卡。
-  updateDailyStats(newWordId?: string) {
-    const stats = this.getStats()
+  updateDailyStats(newWordId?: string, snapshot?: { stats: UserStudyStats; records: Record<string, WordStudyRecord> }) {
+    const stats = snapshot?.stats ?? this.getStats()
     stats.todayReviewCount += 1
     if (newWordId && !stats.todayNewWordIds.includes(newWordId)) stats.todayNewWordIds.push(newWordId)
-    const all = this.getAllRecords()
+    const all = snapshot?.records ?? this.getAllRecords()
     stats.totalLearnedWords = Object.keys(all).length
 
     localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats))

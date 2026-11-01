@@ -235,7 +235,7 @@ function markWord(type: 'hard' | 'good' | 'easy') {
   try {
     studyStorage.recordWordState(currentWord.value.id, props.level, statusMap[type])
   } catch {
-    saveError.value = '学习记录未能保存，请检查设备存储空间后重试。'
+    saveError.value = '学习记录无法读取或保存，请检查设备存储后重试；如仍失败，请先保留现有数据。'
     return
   }
   saveError.value = ''
